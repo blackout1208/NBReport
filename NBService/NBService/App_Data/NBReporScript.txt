@@ -1,0 +1,132 @@
+use Master
+Go
+CREATE DATABASE NB_REPORT
+Go
+
+USE EARS_DB
+Go
+--tblDetailReportTable
+CREATE TABLE [dbo].[tblDetailReport](
+	[ParentCycleID] [int] NOT NULL,
+	[TestReportID] [int] IDENTITY(200,1) NOT NULL,
+	[FeatureName] [varchar](100) NULL,
+	[ScenarioName] [varchar](800) NULL,
+	[StepName] [varchar](1000) NULL,
+	[Exception] [varchar](5000) NULL,
+	[Result] [varchar](200) NULL,
+CONSTRAINT [PK_tblDetailReport] PRIMARY KEY CLUSTERED 
+(
+	[TestReportID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+--tblFailureReports
+CREATE TABLE [dbo].[tblFailureReport](
+	[FailureReportID] [int] NOT NULL,
+	[FailureDetails] [varchar](5000) NULL,
+	[ScreenShot] [binary](1) NULL,
+CONSTRAINT [PK_tblFailureReport] PRIMARY KEY CLUSTERED 
+(
+	[FailureReportID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+--tblTestCycle
+CREATE TABLE [dbo].[tblTestCycle](
+	[TestCycleID] [int] IDENTITY(100,1) NOT NULL,
+	[CONName] [varchar](40) NULL,
+	[ExecutedBy] [varchar](50) NULL,
+	[RequestedBy] [varchar](50) NULL,
+	[BuildNo] [varchar](50) NULL,
+	[ApplicationVersion] [varchar](20) NULL,
+	[DateOfExecution] [datetime] NULL,
+	[TestType] [int] NULL,
+	[MachineName] [varchar](20) NULL,
+CONSTRAINT [PK__tblTestC__A34177C17F60ED59] PRIMARY KEY CLUSTERED 
+(
+	[TestCycleID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+)ON [PRIMARY]
+
+--Foreign Key constraints
+ALTER TABLE [dbo].[tblDetailReport]  WITH CHECK ADD  CONSTRAINT [FK_tblDetailReport_ParentCycleID] FOREIGN KEY([ParentCycleID])
+REFERENCES [dbo].[tblTestCycle] ([TestCycleID])
+GO
+ALTER TABLE [dbo].[tblDetailReport] CHECK CONSTRAINT [FK_tblDetailReport_ParentCycleID]
+GO
+ALTER TABLE [dbo].[tblFailureReport]  WITH CHECK ADD  CONSTRAINT [FK_tblFailureReport_tblDetailReport] FOREIGN KEY([FailureReportID])
+REFERENCES [dbo].[tblDetailReport] ([TestReportID])
+GO
+ALTER TABLE [dbo].[tblFailureReport] CHECK CONSTRAINT [FK_tblFailureReport_tblDetailReport]
+GO
+
+CREATE PROC [dbo].[sp_CreateTestCycleID]
+@Connection varchar(40),
+@ExecutedBy  varchar(50),
+@RequestedBy varchar(50),
+@BuildNo     varchar(50),
+@ApplicationVersion varchar(20),
+@MachineName varchar(20),
+@TestType varchar(20)
+AS
+BEGIN
+	INSERT into tblTestCycle (CONName,ExecutedBy,RequestedBy,BuildNo,ApplicationVersion,
+	DateOfExecution,MachineName,TestType) values (@Connection,@ExecutedBy,@RequestedBy,@BuildNo,@ApplicationVersion,
+	GETDATE(),@MachineName,@TestType)
+END
+
+
+CREATE PROC [dbo].[sp_GetFilterData]
+@TestCycleID int = 0,
+@ExecutedBy varchar(20) = null,
+@FromDate Date = null,
+@ToDate Date = null
+as
+Begin
+	If @ExecutedBy != null
+		select * from tblTestCycle where ExecutedBy = @ExecutedBy
+	ELSE IF @TestCycleID != -1
+		Select * from tblTestCycle where TestCycleID = @TestCycleID
+	ELSE IF @FromDate != null
+		select * from tblTestCycle where CAST(DateOfExecution as Date) between @FromDate and @ToDate
+End
+
+CREATE PROC [dbo].[sp_GetLastTestCycleID]
+@ID int output
+as
+BEGIN
+Select @ID = IDENT_CURRENT('tblTestCycle')
+PRINT @ID
+END
+
+CREATE PROC [dbo].[sp_InsertResult]
+@FeatureName varChar(100),
+@ScenarioName varchar(800),
+@StepName varchar(1000),
+@Exception varchar(5000) = null,
+@Result varchar(200)=null
+as
+Begin
+	Declare @ID int
+	Select @ID = IDENT_CURRENT('tblTestCycle')
+	Insert into tblDetailReport (ParentCycleID,FeatureName,ScenarioName,StepName,Exception,Result)
+	Values(@ID,@FeatureName,@ScenarioName,@StepName,@Exception,@Result)
+	-- For Future request only
+	--If (@Result = 'FAILED')
+	--BEGIN
+	--	Select @ID = IDENT_CURRENT('tblDetailReport')
+	--	--Insert into tblFailureReport (FailureReportID,FailureDetails) Values (@ID,@FailureReason)
+	--END
+End
+
+
+CREATE PROC [dbo].[sp_TCDetailsCount]
+@ParentCycleID int
+as
+	Begin
+		Select COUNT(ParentCycleID) as [Total Steps] from tblDetailReport where ParentCycleID = @ParentCycleID
+		Select count(distinct StepName) as StepsCount from tblDetailReport where ParentCycleID = @ParentCycleID
+		Select COUNT(Result) as [Total Passed] from tblDetailReport where Result = 'PASSED'
+		Select COUNT(Result) as [Total Failed] from tblDetailReport where Result = 'FAILED'
+	End
+GO

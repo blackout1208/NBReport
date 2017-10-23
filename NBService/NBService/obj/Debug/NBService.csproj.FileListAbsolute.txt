@@ -1,0 +1,7 @@
+C:\Users\carlo\Documents\NB\NBService\NBService\bin\NBService.dll.config
+C:\Users\carlo\Documents\NB\NBService\NBService\bin\NBService.dll
+C:\Users\carlo\Documents\NB\NBService\NBService\bin\NBService.pdb
+C:\Users\carlo\Documents\NB\NBService\NBService\obj\Debug\NBService.csprojResolveAssemblyReference.cache
+C:\Users\carlo\Documents\NB\NBService\NBService\obj\Debug\NBService.csproj.CoreCompileInputs.cache
+C:\Users\carlo\Documents\NB\NBService\NBService\obj\Debug\NBService.dll
+C:\Users\carlo\Documents\NB\NBService\NBService\obj\Debug\NBService.pdb
